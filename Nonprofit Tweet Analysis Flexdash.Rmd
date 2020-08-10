@@ -1,0 +1,148 @@
+---
+title: "Nonprofit Tweet Analysis Dashboard"
+author: "Tiffany Feng"
+date: "8/9/2020"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+---
+
+The goal of this project is to derive insights about Twitter trends within the nonprofit industry through the analysis of tweets. This project was created for LA Blueprint, a UCLA student organization that produces technology for Southern California nonprofits.
+
+```{r setup, include=FALSE}
+library(dygraphs)
+library(flexdashboard)
+library(rtweet)
+library(ggplot2)
+library(dplyr)
+library(tidytext)
+library(maps)
+library(stringr)
+library(wordcloud)
+library(plotly)
+library(DT)
+```
+
+```{r, message = FALSE, echo = FALSE}
+# Search for 18000 tweets containing "nonprofit"
+nonprofit_tweets <- search_tweets(q = "nonprofit",
+                              n = 18000)
+#load(file = "nptweets.RData")
+```
+
+Trends
+===================================== 
+
+Row
+-------------------------------------
+    
+### Frequency of tweets containing 'nonprofit'
+    
+```{r, message = FALSE, echo = FALSE}
+p1 <- nonprofit_tweets %>%
+  ts_plot("hours", color = "deepskyblue2") +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(plot.title = ggplot2::element_text(face = "bold")) +
+  ggplot2::labs(
+    x = NULL, y = NULL,
+    # title = "Frequency of tweets containing 'nonprofit'",
+    # subtitle = "tweet counts aggregated using one-hour intervals",
+    subtitle = paste0(format(min(nonprofit_tweets$created_at), "%d %B %Y"), " to ",
+                      format(max(nonprofit_tweets$created_at),"%d %B %Y")),
+    caption = "\nSource: Data collected from Twitter's REST API via rtweet"
+  )
+
+ggplotly(p1)
+```
+   
+    
+### Top tweet locations
+
+```{r, message = FALSE, echo = FALSE}
+ nonprofit_tweets %>% 
+  filter(!is.na(place_full_name)) %>% 
+  count(place_full_name, sort = TRUE) %>% 
+  # top_n(15) %>% 
+  datatable( filter="top", options = list(bPaginate = FALSE), colnames = c("location", "count"))
+```
+
+Row
+-------------------------------------
+
+### Top 15 hashtags in tweets containing 'nonprofit'
+
+```{r, message = FALSE, echo = FALSE}
+top_nonprofit_ht <- nonprofit_tweets %>% 
+  unnest_tokens(hashtag, text, "tweets", to_lower = TRUE) %>%
+  filter(str_detect(hashtag, "^#"),
+        hashtag != "#nonprofit") %>%
+  count(hashtag, sort = TRUE) %>%
+  top_n(15)
+
+p2 <- ggplot(top_nonprofit_ht, aes(x = reorder(hashtag, n), y = n, fill = n)) +
+  geom_bar(stat = "identity") +
+    coord_flip() + 
+    scale_fill_gradient(low = "salmon", high = "orange") +
+    xlab("hashtag") +
+    ylab("count") +
+    labs(fill = "count")
+    #+ ggtitle( "Top 15 hashtags in tweets containing 'nonprofit'")
+
+ggplotly(p2)
+```
+
+### Top 15 accounts mentioned in tweets containing 'nonprofit'
+
+```{r, message = FALSE, echo = FALSE}
+top_nonprofit_mn <- nonprofit_tweets %>% 
+  unnest_tokens(mentions, text, "tweets", to_lower = FALSE) %>%
+  filter(str_detect(mentions, "^@")) %>%  
+  count(mentions, sort = TRUE) %>%
+  top_n(15)
+
+p3 <- ggplot(top_nonprofit_mn, aes(x = reorder(mentions, n), y = n, fill = n)) +
+  geom_bar(stat = "identity") +
+    coord_flip() +
+    scale_fill_gradient(low = "blue2", high = "cyan2") +
+    xlab("twitter account") +
+    ylab("number of mentions") +
+    labs(fill = "mentions")
+    #+ggtitle("Top 15 mentions in tweets containing 'nonprofit'")
+
+ggplotly(p3)
+```
+
+Word Analysis
+===================================== 
+
+Column
+-------------------------------------
+### Tweet Word Frequency Cloud
+
+```{r, message = FALSE, echo = FALSE}
+top_nonprofit_words <- nonprofit_tweets %>%
+  mutate(text = str_remove_all(text, "&amp;|&lt;|&gt;"),
+         text = str_remove_all(text, "\\s?(f|ht)(tp)(s?)(://)([^\\.]*)[\\.|/](\\S*)"),
+         text = str_remove_all(text, "[^\x01-\x7F]")) %>% 
+  unnest_tokens(word, text, token = "tweets") %>%
+  filter(!word %in% stop_words$word,
+        !word %in% str_remove_all(stop_words$word, "'"),
+        str_detect(word, "[a-z]"),
+        !str_detect(word, "^#"),         
+        !str_detect(word, "@\\S+")) %>%
+  count(word, sort = TRUE)
+
+top_nonprofit_words %>% 
+  with(wordcloud(word, n, random.order = FALSE, max.words = 100, colors = "#42bcf5"))
+```
+
+Column
+-------------------------------------
+### Top words used in tweets containing 'nonprofit'
+
+```{r, message = FALSE, echo = FALSE}
+top_nonprofit_words %>% 
+  top_n(500) %>% 
+  datatable(filter="top", options = list(bPaginate = FALSE), colnames = c("word", "count"))
+```
+
