@@ -1,5 +1,5 @@
 # Nonprofit Tweet Analysis
-The goal of this project is to derive insights about the nonprofit industry through the analysis of tweets. This project was created for LA Blueprint, a UCLA student organization that produces technology for Southern California nonprofits.
+This project was created for LA Blueprint, a UCLA student organization that produces technology for Southern California nonprofits. In order to learn more about the nonprofit industry, we wanted to study social media trends to get the most current information. The goal of this project is to derive insights about the nonprofit industry through the analysis of tweets.
 
 View at: https://tiffanyfeng.shinyapps.io/Nonprofit_Tweet_Analysis_Dashboard/
 
